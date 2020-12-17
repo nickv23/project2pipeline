@@ -9,22 +9,60 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+library(dplyr)
+library(randomForest)
+library(magrittr)
+library(ggplot2)
 
-```{r cars}
-summary(cars)
+my_gapminder <- read.csv("../Data/my_gapminder.csv")
+my_gapminder <- my_gapminder %>% select(-X)
+my_penguins <- read.csv("../Data/my_penguins.csv")
+my_penguins <- my_penguins %>% select(-X)
+source("../Code/my_rf_cv.R")
+
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+cv_k2 <- c()
+cv_k5 <- c()
+cv_k10 <- c()
+
+for (i in 1:30) {
+ cv_k2[i] <- my_rf_cv(2)
+ cv_k5[i] <- my_rf_cv(5)
+ cv_k10[i] <- my_rf_cv(10)
+}
+
+df2 <- data.frame(MSE = cv_k2, k = 2)
+df5 <- data.frame(MSE = cv_k5, k = 5)
+df10 <- data.frame(MSE = cv_k10, k = 10)
+
+df_all <- data.frame(df2, df5, df10)
+
+ggplot(df2, aes(k, MSE)) + geom_boxplot() +
+    geom_boxplot(data = df5) +
+    geom_boxplot(data = df10) +
+    labs(x = "Folds", y = "Mean Squared Error", title = "Error For RandomForests Of Different Folds") +
+    theme_bw(base_size = 16) +
+    scale_x_continuous() +
+    theme_dark() +
+    theme(plot.title = element_text(hjust = 0.5)) 
+
+ggsave("../Output/Figures/boxplots.png")
+
+random_forest_table <- data.frame("Mean" = c(mean(cv_k2), mean(cv_k5), mean(cv_k10)),
+                                  "SD" = c(sd(cv_k2), sd(cv_k5), sd(cv_k10)))
+row.names(random_forest_table) <- c("k = 2", "k = 5", "k = 10")
+
+saveRDS(random_forest_table, file = "../Output/Results/table.rds")
+
+results<- cbind(cv_k2, cv_k5, cv_k10)
+write.csv(results, "../Output/Results/simulations.csv")
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
